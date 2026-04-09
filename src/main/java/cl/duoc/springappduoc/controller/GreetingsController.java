@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.ModelAndView;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,9 +19,11 @@ public class GreetingsController {
 
     @GetMapping("/")
     @Operation(summary = "API Info", description = "Shows links to the API documentation")
-    public String index() {
+    public ModelAndView index() {
         logger.info("Request received on / endpoint");
-        return "Welcome to the Greetings API. Visit /swagger-ui.html for API documentation or /api-docs for the OpenAPI spec.";
+        ModelAndView mav = new ModelAndView("index");
+        mav.addObject("message", "Welcome to the Greetings API");
+        return mav;
     }
 
     @GetMapping("/greetings")

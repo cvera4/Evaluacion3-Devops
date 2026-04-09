@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greetings API</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 3rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        .card h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #4a4a8a; }
+        .card p { font-size: 1.05rem; color: #666; margin-bottom: 1.5rem; line-height: 1.6; }
+        .links { display: flex; flex-direction: column; gap: 0.75rem; }
+        .links a {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .links a:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+        .links .primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+        .links .secondary { background: #f0f0f5; color: #4a4a8a; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1 th:text="${message}">Welcome to the Greetings API</h1>
+        <p>A sample Spring Boot REST API for the Duoc DevOps class.</p>
+        <div class="links">
+            <a href="/swagger-ui.html" class="primary">Swagger UI Documentation</a>
+            <a href="/api-docs" class="secondary">OpenAPI Spec (JSON)</a>
+        </div>
+    </div>
+</body>
+</html>
