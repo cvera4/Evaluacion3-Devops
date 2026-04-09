@@ -77,6 +77,51 @@ The application starts on **port 8080**.
 | GET | `/greetings` | Returns `Hello world` |
 | GET | `/greetings?message=YourName` | Returns `Hello YourName` |
 
+## Docker
+
+### Build & run with the single-stage Dockerfile
+
+```bash
+docker build -t spring-app-duoc:single .
+docker run -d -p 8080:8080 --name spring-app spring-app-duoc:single
+```
+
+### Build & run with the multi-stage Dockerfile
+
+```bash
+docker build -f Dockerfile.multistage -t spring-app-duoc:multi .
+docker run -d -p 8080:8080 --name spring-app spring-app-duoc:multi
+```
+
+### List images and running containers
+
+```bash
+# List all Docker images
+docker images
+
+# List running containers
+docker ps
+
+# List all containers (including stopped)
+docker ps -a
+```
+
+### Remove containers and images
+
+```bash
+# Stop a running container
+docker stop spring-app
+
+# Remove a container
+docker rm spring-app
+
+# Remove an image
+docker rmi spring-app-duoc:single
+
+# Remove an image (multi-stage)
+docker rmi spring-app-duoc:multi
+```
+
 ## API Documentation
 
 Once the application is running:
