@@ -47,6 +47,27 @@ mvn clean compile
 mvn test
 ```
 
+### Run tests with code coverage (JaCoCo)
+
+```bash
+mvn clean test
+```
+
+The project uses the **JaCoCo Maven plugin** with two goals:
+
+| Goal | Phase | Description |
+|------|-------|-------------|
+| `prepare-agent` | Before tests | Instruments the compiled classes to track which lines and branches are executed during tests |
+| `report` | `test` | Generates an HTML, CSV, and XML coverage report from the collected execution data |
+
+After running, the coverage report is available at:
+
+```
+target/site/jacoco/index.html
+```
+
+Open this file in a browser to view detailed line and branch coverage per class.
+
 ### Package into a JAR
 
 ```bash
