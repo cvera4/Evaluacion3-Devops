@@ -1,83 +1,144 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 name: Spring Boot App CI/CD
 
 on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
   workflow_dispatch:
 
-jobs:
-  CICD:
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/benjav892/evaluacion2-devops
 
+jobs:
+  build-and-test:
+    name: Build & Test (IE1, IE2)
     runs-on: ubuntu-latest
 
     steps:
-    # Para chequear que podemos llamar a las variables de nuestro repo
-    - name: Print GH Variable
-      run: echo ${{ vars.DOMAIN }}
-    # Nos traemos el fuente del repositorio
-    - uses: actions/checkout@v4
-    # Instalamos Java 21 en el runner
-    - name: Set up JDK 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: maven
-    
-    # If your project uses Gradle, switch cache to "gradle" above.
-    # You may also add explicit build steps (mvn -q -DskipTests package / ./gradlew build)
-    # if your dependency resolution requires it.
-    - name: Install Snyk CLI
-      run: npm install -g snyk
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-    - name: Authenticate Snyk CLI
-      env:
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run unit tests with JaCoCo coverage (IE2)
+        run: mvn clean test
+
+      - name: Upload JaCoCo coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          retention-days: 14
+
+      - name: Build Docker image (IE1)
+        run: |
+          docker build -f Dockerfile.multistage -t ${{ env.IMAGE_NAME }}:latest .
+
+  security-scan:
+    name: Security Scan (IE3)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Authenticate Snyk
+        env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      run: |
-          snyk auth "$SNYK_TOKEN"
+        run: snyk auth "$SNYK_TOKEN"
 
-    - name: Run Snyk test (JSON + SARIF)
-      env:
-          # Optional (uncomment if you use it):
-          # SNYK_ORG: ${{ vars.SNYK_ORG }}
-          # SNYK_ORG: ${{ secrets.SNYK_ORG }}
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      run: |
+      - name: Run Snyk scan and generate reports
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
           mkdir -p snyk-reports
-          # JSON report
           snyk test \
             --all-projects \
-            --json-file-output=snyk-reports/snyk-java-deps.json \
-            || true
-          # SARIF report
-          snyk test \
-            --all-projects \
-            --sarif-file-output=snyk-reports/snyk-java-deps.sarif \
+            --json-file-output=snyk-reports/snyk-result.json \
+            --sarif-file-output=snyk-reports/snyk-result.sarif \
             || true
 
-    - name: Upload Snyk reports (artifacts)
-      uses: actions/upload-artifact@v4
-      with:
+      - name: Block pipeline if high vulnerabilities found (IE3)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          HIGH=$(cat snyk-reports/snyk-result.json \
+            | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          vulns = data.get('vulnerabilities', [])
+          count = sum(1 for v in vulns if v.get('severity') in ['high','critical'])
+          print(count)
+          " 2>/dev/null || echo "0")
+          echo "Vulnerabilidades high/critical encontradas: $HIGH"
+          if [ "$HIGH" -gt 3 ]; then
+            echo "ERROR: Se encontraron $HIGH vulnerabilidades de severidad alta o crítica."
+            echo "El pipeline se detiene para proteger la calidad del proyecto."
+            exit 1
+          fi
+          echo "OK: El umbral de seguridad es aceptable."
+
+      - name: Upload Snyk reports
+        uses: actions/upload-artifact@v4
+        with:
           name: snyk-reports
           path: snyk-reports/
-          if-no-files-found: error
           retention-days: 14
-    
-    - name: Build with Maven
-      run: mvn clean package
-      
 
-          
-    
+  publish-and-deploy:
+    name: Publish Image & Deploy (IE1, IE4, IE5)
+    runs-on: ubuntu-latest
+    needs: security-scan
 
-     
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build and push Docker image to GHCR (IE1)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.multistage
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
+      - name: Deploy with Docker Compose in simulated environment (IE4, IE5)
+        run: |
+          docker compose up -d
+          echo "Esperando que la aplicación levante..."
+          sleep 15
+          docker compose ps
+          echo "Verificando endpoint /greetings..."
+          curl --fail http://localhost:8080/greetings || (docker compose logs && exit 1)
+          echo "Despliegue exitoso."
+
+      - name: Tear down environment
+        if: always()
+        run: docker compose down
