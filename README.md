@@ -187,6 +187,38 @@ docker compose up --build
 
 La aplicación queda disponible en `http://localhost:8080`.
 
+## 📊 Sistema de Monitoreo y Observabilidad (IE1, IE3, IE4)
+
+Para garantizar la visibilidad total del microservicio en el entorno orquestado, se ha integrado una arquitectura de monitoreo basada en **Prometheus** (recolección) y **Grafana** (visualización en tiempo real).
+
+### Métricas Críticas en el Dashboard
+A través de la interfaz web de Grafana (`http://localhost:3000`), el equipo tiene acceso a un panel de control con cuatro indicadores clave para la toma de decisiones técnicas:
+
+| Panel | Tipo de Gráfico | Métrica / Origen de Datos | Justificación Técnica y Decisiones |
+| :--- | :--- | :--- | :--- |
+| **1. Tiempo de Despliegue** | Historial / Líneas | API de GitHub Actions (`workflow_run`) | **Optimización:** Permite evaluar la eficiencia del pipeline. Un incremento en el tiempo alerta sobre ineficiencias en la construcción de capas Docker o lentitud en las pruebas unitarias. |
+| **2. Cobertura de Pruebas** | Indicador (Gauge) | Reporte Jacoco / API de SonarQube | **Calidad:** Muestra el porcentaje de código respaldado por JUnit. Si baja del 80%, se toman decisiones de refactorización inmediata antes de generar deuda técnica. |
+| **3. Uso de CPU y Memoria** | Área / Líneas | Prometheus: `jvm_memory_used_bytes` | **Escalabilidad:** Monitorea el comportamiento de la Máquina Virtual de Java (JVM). Si el consumo de RAM supera de forma sostenida el 75%, justifica técnicamente el autoescalado horizontal (HPA) en Kubernetes. |
+| **4. Errores Registrados** | Contador / Barras | Prometheus: `http_server_requests_seconds_count` | **Resiliencia:** Filtra las respuestas de estado HTTP `5xx`. Si registra fallos, el equipo técnico toma la decisión de ejecutar un *rollback* inmediato a la versión estable anterior. |
+
+---
+
+## 🛡 Gobernanza y Políticas de Cumplimiento (IE5, IE6)
+
+La seguridad y la calidad del software no se negocian. El repositorio implementa mecanismos automatizados para asegurar el cumplimiento normativo en cada integración:
+
+### 1. Control de Cambios Seguro (Branch Protection)
+Se ha estructurado una política mandatoria sobre la rama principal `main`:
+- **Prohibición de Push Directo:** Todo cambio debe originarse obligatoriamente desde una rama de características (`feature/`) mediante un Pull Request (PR).
+- **Bloqueo Basado en Estado (Status Checks):** El botón de integración (*Merge*) se deshabilita automáticamente si el pipeline de GitHub Actions arroja un estado fallido.
+
+### 2. Script Personalizado de Auditoría de Calidad
+Como mecanismo complementario de gobernanza (e infraestructura como código), el proyecto incorpora un script de auditoría automatizado (`check-quality.sh`). Este script parsea los reportes XML de JaCoCo en el pipeline y fuerza un código de salida `exit 1` si detecta que la cobertura del código Java es inferior al umbral del 80%.
+
+### 3. Demostración de Resiliencia ante Fallas Críticas
+El pipeline actúa como un escudo activo. Como se evidencia en el historial de commits del repositorio (marcado con una **`X` roja** en la interfaz de GitHub), ante cualquier fallo en las pruebas automatizadas de JUnit, vulnerabilidades de Snyk o incumplimiento de métricas, el flujo **se interrumpe por completo**. Esto bloquea los jobs de empaquetado y evita de forma proactiva que una versión defectuosa o insegura sea publicada en el registro de contenedores o desplegada en la nube.
+
+
 ### Integrantes
 
 - Benjamin Vasquez (benjav892)
