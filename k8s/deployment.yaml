@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-microservicio-deployment
+  namespace: produccion
+  labels:
+    app: microservicio-java
+spec:
+  replicas: 2 # ALTA DISPONIBILIDAD: Mantiene siempre 2 copias de tu app corriendo
+  selector:
+    matchLabels:
+      app: microservicio-java
+  template:
+    metadata:
+      labels:
+        app: microservicio-java
+    spec:
+      containers:
+        - name: microservicio-app
+          image: mi-usuario-docker/mi-microservicio-java:latest # La ruta a tu imagen Docker
+          ports:
+            - containerPort: 8080 # Puerto estandar donde corre Spring Boot / Java
+          resources:
+            limits: # Lo maximo de recursos que puede consumir el contenedor
+              cpu: "1000m"      # 1 CPU Virtual
+              memory: "1024Mi"  # 1 GB de RAM (adecuado para la maquina virtual de Java)
+            requests: # Los recursos minimos garantizados que necesita para arrancar
+              cpu: "500m"       # 0.5 CPU Virtual
+              memory: "512Mi"   # 512 MB de RAM
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: java-microservicio-service
+  namespace: produccion
+spec:
+  type: LoadBalancer # Crea un Balanceador de Carga automatico en la nube (AWS, Azure, etc.)
+  ports:
+    - port: 80         # El puerto publico por el que accederán los usuarios
+      targetPort: 8080 # Redirige el trafico al puerto interno de la app Java
+  selector:
+    app: microservicio-java
