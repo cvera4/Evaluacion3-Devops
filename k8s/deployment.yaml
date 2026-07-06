@@ -45,3 +45,36 @@ spec:
       targetPort: 8080
   selector:
     app: microservicio-java
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: java-microservicio-gateway
+  namespace: produccion
+spec:
+  selector:
+    istio: ingressgateway # Utiliza el controlador de entrada por defecto de Istio
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*" # Permite peticiones globales enlazadas al balanceador cloud
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: java-microservicio-virtualservice
+  namespace: produccion
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - java-microservicio-gateway
+  http:
+    - route:
+        - destination:
+            host: java-microservicio-service.produccion.svc.cluster.local # Enrutamiento DNS interno
+            port:
+              number: 8080 # Puerto real del contenedor Spring Boot
