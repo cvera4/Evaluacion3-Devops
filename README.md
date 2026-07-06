@@ -1,185 +1,128 @@
-# Spring Boot Greetings API
+# Spring Boot Greetings API — Proyecto DevOps (EFT DOY0101)
 
-Sample Spring Boot application for the **Duoc DevOps** class. Students can use this project to learn about building, running, and deploying a Java REST API.
+Aplicación Spring Boot de ejemplo utilizada como base para automatizar su ciclo de vida completo aplicando prácticas DevOps: control de versiones, CI/CD, análisis de calidad y seguridad, contenedores, despliegue continuo y monitoreo.
 
-## Prerequisites
+**Integrantes:** Benjamín Vásquez (`benjav892`) · Camilo Vera (`cvera4`)
 
-- **Java 21** — Download the Microsoft Build of OpenJDK 21 from:
-  https://learn.microsoft.com/en-us/java/openjdk/download
+---
+
+## Tabla de contenidos
+
+1. [Requisitos previos](#requisitos-previos)
+2. [Compilar y ejecutar](#compilar-y-ejecutar)
+3. [Endpoints](#endpoints)
+4. [Estrategia de ramificación y control de versiones](#1-estrategia-de-ramificación-y-control-de-versiones)
+5. [Docker](#2-contenedores-con-docker)
+6. [Pipeline de CI/CD con GitHub Actions](#3-pipeline-de-cicd-con-github-actions)
+7. [Análisis de código y seguridad](#4-análisis-de-código-y-seguridad)
+8. [Despliegue continuo en entorno cloud simulado](#5-despliegue-continuo-en-entorno-cloud-simulado)
+9. [Monitoreo y observabilidad](#6-monitoreo-y-observabilidad)
+10. [Gobernanza y políticas de cumplimiento](#7-gobernanza-y-políticas-de-cumplimiento)
+11. [Estado de las integraciones](#estado-de-las-integraciones)
+12. [Trazabilidad de indicadores de logro](#trazabilidad-de-indicadores-de-logro-eft)
+13. [Declaración de uso de IA](#declaración-de-uso-de-ia)
+
+---
+
+## Requisitos previos
+
+- **Java 21** — Microsoft Build de OpenJDK 21: https://learn.microsoft.com/en-us/java/openjdk/download
 - **Apache Maven 3.8+**
 
-### Installing Maven on Windows (using Chocolatey)
-
-1. Install Chocolatey from an **admin PowerShell** terminal:
+### Instalar Maven en Windows (con Chocolatey)
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-```
-
-2. Install Maven from an **admin PowerShell** terminal:
-
-```powershell
 choco install maven --force
 ```
 
-> **Important:** After installing Maven, restart your terminal or VS Code editor for the changes to take effect.
+> Reinicia la terminal o el editor después de instalar Maven.
 
-### Verify your installation
+Verificar instalación:
 
 ```bash
 java -version
 mvn -version
 ```
 
-## Build & Run
-
-### Compile the project
+## Compilar y ejecutar
 
 ```bash
-mvn clean compile
+mvn clean compile          # Compilar
+mvn test                   # Ejecutar tests
+mvn clean test              # Ejecutar tests + reporte de cobertura JaCoCo
+mvn clean package           # Empaquetar en JAR
+mvn spring-boot:run          # Ejecutar
 ```
 
-### Run tests
-
-```bash
-mvn test
-```
-
-### Run tests with code coverage (JaCoCo)
-
-```bash
-mvn clean test
-```
-
-The project uses the **JaCoCo Maven plugin** with two goals:
-
-| Goal | Phase | Description |
-|------|-------|-------------|
-| `prepare-agent` | Before tests | Instruments the compiled classes to track which lines and branches are executed during tests |
-| `report` | `test` | Generates an HTML, CSV, and XML coverage report from the collected execution data |
-
-After running, the coverage report is available at:
+El plugin **JaCoCo** corre en dos fases: `prepare-agent` (instrumenta las clases antes de los tests) y `report` (genera el reporte HTML/CSV/XML). El reporte queda disponible en:
 
 ```
 target/site/jacoco/index.html
 ```
 
-Open this file in a browser to view detailed line and branch coverage per class.
-
-### Package into a JAR
-
-```bash
-mvn clean package
-```
-
-### Run the application
-
-Using Maven:
-
-```bash
-mvn spring-boot:run
-```
-
-Or with the JAR directly:
-
-```bash
-java -jar target/spring-app-duoc-0.0.1-SNAPSHOT.jar
-```
-
-The application starts on **port 8080**.
-
 ## Endpoints
 
-| Method | URL | Description |
+| Método | URL | Descripción |
 |--------|-----|-------------|
-| GET | `/` | Welcome page with links to the API documentation |
-| GET | `/greetings` | Returns `Hello world` |
-| GET | `/greetings?message=YourName` | Returns `Hello YourName` |
+| GET | `/` | Página de bienvenida con enlaces a la documentación |
+| GET | `/greetings` | Retorna `Hello world` |
+| GET | `/greetings?message=TuNombre` | Retorna `Hello TuNombre` |
+| GET | `/swagger-ui.html` | Documentación interactiva (Swagger UI) |
+| GET | `/api-docs` | Especificación OpenAPI en JSON |
 
-## Docker
+---
 
-### Build & run with the single-stage Dockerfile
+## 1. Estrategia de ramificación y control de versiones
+
+**Modelo:** Trunk-Based Development con ramas de apoyo de corta duración. `main` es la única rama de release y está protegida: no admite push directo, todo cambio ingresa exclusivamente mediante Pull Request y revisión de código.
+
+**Convención de nombres de rama:**
+
+| Prefijo | Uso |
+|---|---|
+| `feature/...` | Nuevas funcionalidades (ej: `feature/github-actions`, `feature/readme-update`) |
+| `hotfix/...` | Correcciones urgentes sobre `main` (ej: `hotfix/arreglo-final`) |
+| `bugfix/...` | Corrección de errores no urgentes |
+
+**Por qué esta estrategia:** favorece una integración continua real, con commits pequeños y frecuentes hacia `main`, reduciendo la probabilidad de conflictos grandes frente a un modelo de ramas de larga duración (como GitFlow clásico).
+
+**Flujo de trabajo demostrado:** durante el desarrollo del proyecto se crearon ramas `feature/*` y una `hotfix/*`, cada una integrada a `main` mediante Pull Request revisado (ver historial de commits y PRs mergeados del proyecto). En este repositorio consolidado, `main` concentra el estado final validado de todas esas integraciones.
+
+---
+
+## 2. Contenedores con Docker
+
+Se mantienen dos variantes de imagen para comparar enfoques:
+
+### Dockerfile (single-stage)
 
 ```bash
 docker build -t spring-app-duoc:single .
 docker run -d -p 8080:8080 --name spring-app spring-app-duoc:single
 ```
 
-### Build & run with the multi-stage Dockerfile
+### Dockerfile.multistage (recomendado)
+
+Primera etapa compila con `maven:3.9.6-eclipse-temurin-21-alpine`; la etapa final corre sobre `eclipse-temurin:21-jre-alpine`, reduciendo tamaño de imagen y superficie de ataque al no incluir el JDK ni Maven en la imagen final.
 
 ```bash
 docker build -f Dockerfile.multistage -t spring-app-duoc:multi .
 docker run -d -p 8080:8080 --name spring-app spring-app-duoc:multi
 ```
 
-### List images and running containers
+### Comandos útiles
 
 ```bash
-# List all Docker images
 docker images
-
-# List running containers
-docker ps
-
-# List all containers (including stopped)
 docker ps -a
+docker stop spring-app && docker rm spring-app
+docker rmi spring-app-duoc:single spring-app-duoc:multi
 ```
 
-### Remove containers and images
-
-```bash
-# Stop a running container
-docker stop spring-app
-
-# Remove a container
-docker rm spring-app
-
-# Remove an image
-docker rmi spring-app-duoc:single
-
-# Remove an image (multi-stage)
-docker rmi spring-app-duoc:multi
-```
-
-## API Documentation
-
-Once the application is running:
-
-- **Swagger UI:** http://localhost:8080/swagger-ui.html
-- **OpenAPI spec (JSON):** http://localhost:8080/api-docs
-
------------------------------------------------------------------------------------
-## Pipeline CI/CD — Trazabilidad y Calidad
-
-Este proyecto implementa un pipeline de integración y entrega continua con GitHub Actions, organizado en tres etapas secuenciales.
-
-### Etapas del pipeline
-
-**1. Build & Test**
-Se compila el proyecto y se ejecutan las pruebas unitarias con JUnit 5 usando `mvn clean test`. El plugin JaCoCo genera un reporte de cobertura de código disponible como artefacto descargable en cada ejecución. Esto garantiza que el código tenga cobertura verificable antes de continuar.
-
-**2. Security Scan**
-Se ejecuta un análisis de dependencias con Snyk. Si se detectan más de 3 vulnerabilidades de severidad `high` o `critical`, el pipeline se detiene con `exit 1`, bloqueando el despliegue. Los reportes en formato JSON y SARIF quedan disponibles como artefactos para auditoría.
-
-**3. Publish & Deploy**
-La imagen Docker se construye usando un Dockerfile multistage (imagen base `eclipse-temurin:21-jre-alpine` para menor superficie de ataque) y se publica en GitHub Container Registry (GHCR) con dos tags: `latest` y el SHA del commit para trazabilidad exacta. Finalmente se despliega usando Docker Compose y se verifica que el endpoint `/greetings` responde correctamente.
-
-### Cómo se garantiza la trazabilidad
-
-- Cada imagen publicada lleva el tag del SHA del commit, lo que permite saber exactamente qué código está corriendo en producción.
-- Los artefactos de cobertura (JaCoCo) y seguridad (Snyk) quedan almacenados 14 días en cada ejecución del pipeline.
-- El pipeline falla de forma explícita en cada etapa, impidiendo que código sin pruebas o con vulnerabilidades críticas llegue a producción.
-
-### Cómo se garantiza la calidad
-
-- **Pruebas unitarias**: JUnit 5 con 4 casos de prueba que cubren los escenarios críticos del controlador.
-- **Cobertura de código**: JaCoCo mide las líneas y ramas ejecutadas durante los tests.
-- **Análisis de seguridad**: Snyk escanea dependencias y bloquea el pipeline si supera el umbral de vulnerabilidades definido.
-- **Orquestación**: Docker Compose gestiona el ciclo de vida del contenedor con healthcheck incorporado, garantizando que la aplicación está saludable antes de considerarse desplegada.
-
-### Cómo ejecutar localmente con Docker Compose
+### Ejecutar todo el stack localmente (app + Prometheus + Grafana)
 
 ```bash
 docker compose up --build
@@ -187,44 +130,121 @@ docker compose up --build
 
 La aplicación queda disponible en `http://localhost:8080`.
 
-## 📊 Sistema de Monitoreo y Observabilidad (IE1, IE3, IE4)
+---
 
-Para garantizar la visibilidad total del microservicio en el entorno orquestado, se ha integrado una arquitectura de monitoreo basada en **Prometheus** (recolección) y **Grafana** (visualización en tiempo real).
+## 3. Pipeline de CI/CD con GitHub Actions
 
-### Métricas Críticas en el Dashboard
-A través de la interfaz web de Grafana (`http://localhost:3000`), el equipo tiene acceso a un panel de control con cuatro indicadores clave para la toma de decisiones técnicas:
+Archivo: `.github/workflows/CICD.yml`. Se dispara con **push a `develop`**, **Pull Request hacia `main`**, y también admite ejecución manual (`workflow_dispatch`).
 
-| Panel | Tipo de Gráfico | Métrica / Origen de Datos | Justificación Técnica y Decisiones |
-| :--- | :--- | :--- | :--- |
-| **1. Tiempo de Despliegue** | Historial / Líneas | API de GitHub Actions (`workflow_run`) | **Optimización:** Permite evaluar la eficiencia del pipeline. Un incremento en el tiempo alerta sobre ineficiencias en la construcción de capas Docker o lentitud en las pruebas unitarias. |
-| **2. Cobertura de Pruebas** | Indicador (Gauge) | Reporte Jacoco / API de SonarQube | **Calidad:** Muestra el porcentaje de código respaldado por JUnit. Si baja del 80%, se toman decisiones de refactorización inmediata antes de generar deuda técnica. |
-| **3. Uso de CPU y Memoria** | Área / Líneas | Prometheus: `jvm_memory_used_bytes` | **Escalabilidad:** Monitorea el comportamiento de la Máquina Virtual de Java (JVM). Si el consumo de RAM supera de forma sostenida el 75%, justifica técnicamente el autoescalado horizontal (HPA) en Kubernetes. |
-| **4. Errores Registrados** | Contador / Barras | Prometheus: `http_server_requests_seconds_count` | **Resiliencia:** Filtra las respuestas de estado HTTP `5xx`. Si registra fallos, el equipo técnico toma la decisión de ejecutar un *rollback* inmediato a la versión estable anterior. |
+El pipeline está organizado en 4 jobs secuenciales, cada uno depende del anterior (`needs`):
+
+### Job 1 — `build-and-test`
+- Checkout del código y setup de JDK 21 (Temurin)
+- `mvn clean test` → ejecuta JUnit 5 (4 casos de prueba sobre `GreetingsController`)
+- JaCoCo genera el reporte de cobertura, publicado como artefacto descargable (retención 14 días)
+
+### Job 2 — `security-scan`
+- Instala y autentica Snyk CLI
+- `snyk test --all-projects` sobre las dependencias del proyecto
+- Genera reportes en JSON y SARIF, publicados como artefactos
+
+### Job 3 — `publish-image`
+- Se ejecuta solo en Pull Request hacia `main` o de forma manual
+- Construye la imagen con `Dockerfile.multistage` y la publica en Docker Hub con dos tags: `latest` y el **SHA del commit** (trazabilidad exacta de qué versión corre en cada ambiente)
+
+### Job 4 — `deploy-kubernetes`
+- Aplica los manifiestos de Kubernetes en un entorno cloud simulado
+- Configura inyección de Istio y envío de métricas a AWS CloudWatch
+- Ejecuta pruebas de aceptación antes de autorizar el paso a producción
+
+**Garantía de calidad antes de avanzar de etapa:** si los tests fallan, si Snyk detecta vulnerabilidades sobre el umbral, o si las pruebas de aceptación no pasan, el pipeline se detiene y bloquea el avance a la siguiente etapa.
 
 ---
 
-## 🛡 Gobernanza y Políticas de Cumplimiento (IE5, IE6)
+## 4. Análisis de código y seguridad
 
-La seguridad y la calidad del software no se negocian. El repositorio implementa mecanismos automatizados para asegurar el cumplimiento normativo en cada integración:
+### SonarQube
+Configurado vía `sonar-project.properties`:
+- `sonar.projectKey=cl.duoc:spring-app-duoc`
+- `sonar.organization=duoc-devops-team`, host: SonarCloud
+- Integrado con el reporte de cobertura de JaCoCo (`target/site/jacoco/jacoco.xml`)
+- Excluye `pom.xml` y clases de test del análisis
 
-### 1. Control de Cambios Seguro (Branch Protection)
-Se ha estructurado una política mandatoria sobre la rama principal `main`:
-- **Prohibición de Push Directo:** Todo cambio debe originarse obligatoriamente desde una rama de características (`feature/`) mediante un Pull Request (PR).
-- **Bloqueo Basado en Estado (Status Checks):** El botón de integración (*Merge*) se deshabilita automáticamente si el pipeline de GitHub Actions arroja un estado fallido.
+### Snyk
+- Escanea dependencias del proyecto (`package.json`/`pom.xml`) en busca de vulnerabilidades conocidas
+- **Umbral de corte:** si se detectan más de 3 vulnerabilidades de severidad `high` o `critical`, el pipeline se detiene con `exit 1`
 
-### 2. Script Personalizado de Auditoría de Calidad
-Como mecanismo complementario de gobernanza (e infraestructura como código), el proyecto incorpora un script de auditoría automatizado (`check-quality.sh`). Este script parsea los reportes XML de JaCoCo en el pipeline y fuerza un código de salida `exit 1` si detecta que la cobertura del código Java es inferior al umbral del 80%.
+### Dependabot
+Recomendado como complemento para mantener dependencias actualizadas automáticamente (ver sección [Estado de las integraciones](#estado-de-las-integraciones)).
 
-### 3. Demostración de Resiliencia ante Fallas Críticas
-El pipeline actúa como un escudo activo. Como se evidencia en el historial de commits del repositorio (marcado con una **`X` roja** en la interfaz de GitHub), ante cualquier fallo en las pruebas automatizadas de JUnit, vulnerabilidades de Snyk o incumplimiento de métricas, el flujo **se interrumpe por completo**. Esto bloquea los jobs de empaquetado y evita de forma proactiva que una versión defectuosa o insegura sea publicada en el registro de contenedores o desplegada en la nube.
+---
 
+## 5. Despliegue continuo en entorno cloud simulado
 
-### Integrantes
+El manifiesto `k8s/deployment.yaml` define:
+- Un `Deployment` con **2 réplicas** (alta disponibilidad) y límites de CPU/memoria
+- Un `Service` tipo `LoadBalancer` para balanceo de carga
+- Recursos de **Istio** (`Gateway` y `VirtualService`) para enrutamiento y tráfico seguro (mTLS) entre servicios, mediante inyección automática de sidecar
 
-- Benjamin Vasquez (benjav892)
-- Camilo Vera(cvera4)
+El job de despliegue del pipeline simula, sobre un entorno cloud controlado (según lo permite la evaluación):
+- Aplicación de los manifiestos en el namespace `produccion`
+- Habilitación del sidecar de Istio y sus métricas de red
+- Envío de logs y métricas de la JVM a AWS CloudWatch
+- Ejecución de pruebas de aceptación (smoke tests) antes de dar por autorizada la carga en producción
 
-### Declaración de uso de IA
+---
 
-Se utilizó Claude (Anthropic) como apoyo para la estructuración del pipeline CI/CD y la redacción técnica de esta documentación. Todas las decisiones técnicas, justificaciones y reflexiones individuales son propias del equipo. Referencia: https://bibliotecas.duoc.cl/ia
+## 6. Monitoreo y observabilidad
 
+Arquitectura basada en **Prometheus** (recolección de métricas) y **Grafana** (visualización), levantados como contenedores adicionales en `docker-compose.yml`.
+
+- Prometheus scrapea `/actuator/prometheus` cada 15 segundos (`prometheus.yml`)
+- Grafana disponible en `http://localhost:3000`
+
+| Panel | Métrica | Para qué sirve |
+|---|---|---|
+| Tiempo de despliegue | API de GitHub Actions (`workflow_run`) | Detectar degradación en la velocidad del pipeline |
+| Cobertura de pruebas | Reporte JaCoCo / SonarQube | Alertar si la cobertura cae bajo el 80% |
+| CPU y memoria de la JVM | `jvm_memory_used_bytes` (Prometheus) | Justificar autoescalado horizontal en Kubernetes |
+| Errores HTTP 5xx | `http_server_requests_seconds_count` | Disparar decisión de rollback si aumentan los fallos |
+
+---
+
+## 7. Gobernanza y políticas de cumplimiento
+
+- **Branch protection en `main`:** no se admite push directo; todo cambio requiere Pull Request, y el botón de merge se bloquea automáticamente si el pipeline de GitHub Actions falla.
+- **Resiliencia ante fallas:** ante cualquier fallo en tests, vulnerabilidades críticas de Snyk, o incumplimiento de las métricas de calidad, el pipeline se interrumpe por completo, evitando publicar o desplegar una versión defectuosa.
+
+---
+
+## Estado de las integraciones
+
+Documentamos honestamente qué está automatizado end-to-end y qué queda como configuración lista para conectar, de forma que el flujo sea auditable:
+
+| Integración | Estado |
+|---|---|
+| Build + JUnit 5 + JaCoCo | ✅ Automatizado y funcional en el pipeline |
+| Snyk (seguridad de dependencias) | ✅ Automatizado, con corte por umbral de severidad |
+| Publicación de imagen (Docker Hub, tag por SHA) | ✅ Automatizado |
+| Prometheus + Grafana | ✅ Funcional vía `docker-compose.yml` |
+| SonarQube | ⚙️ Configuración lista (`sonar-project.properties`); pendiente conectar la action oficial de análisis en el step del workflow |
+| Kubernetes + Istio + AWS CloudWatch | 🧪 Simulado en el pipeline (entorno cloud simulado, según lo requerido por la evaluación) |
+| Dependabot | 🔜 Recomendado, no configurado aún en este repositorio |
+
+---
+
+## Trazabilidad de indicadores de logro (EFT)
+
+| Indicador | Dónde se evidencia |
+|---|---|
+| IE1, IE2, IE3, IE5 | Sección [Estrategia de ramificación](#1-estrategia-de-ramificación-y-control-de-versiones) |
+| IE4, IE6, IE7, IE9 | Sección [Pipeline de CI/CD](#3-pipeline-de-cicd-con-github-actions) |
+| IE8 | Sección [Análisis de código y seguridad](#4-análisis-de-código-y-seguridad) |
+| IE10, IE12, IE13 | Sección [Despliegue continuo](#5-despliegue-continuo-en-entorno-cloud-simulado) |
+| IE11 | Sección [Monitoreo y observabilidad](#6-monitoreo-y-observabilidad) |
+
+---
+
+## Declaración de uso de IA
+
+Se utilizó Claude (Anthropic) como apoyo para estructurar esta documentación técnica y organizarla según los indicadores de la evaluación, a partir del código y configuración ya existentes en el repositorio. Todas las decisiones técnicas, la arquitectura y las justificaciones fueron definidas por el equipo. Referencia: https://bibliotecas.duoc.cl/ia
